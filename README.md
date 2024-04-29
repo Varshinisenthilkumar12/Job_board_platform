@@ -21,3 +21,5 @@ Analytics: Companies can track the performance of their job postings.
 Mobile Compatibility: The platform works well on mobile devices too.
 
 Privacy and Security: Measures are in place to protect users information.
+
+![JOB_PORTAL](https://github.com/Varshinisenthilkumar12/Job_board_platform/blob/main/WhatsApp%20Image%202024-04-29%20at%2011.34.09%20PM.jpeg?raw=true)
