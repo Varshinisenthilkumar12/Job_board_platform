@@ -1,6 +1,6 @@
 # Job_board_platform
 
-![JOB_PORTAL](https://github.com/Varshinisenthilkumar12/Job_board_platform/blob/main/WhatsApp%20Image%202024-04-29%20at%2011.34.09%20PM.jpeg?raw=true)
+![JOB_PORTAL](https://github.com/Varshinisenthilkumar12/Job_board_platform/blob/main/Screenshot%202024-05-10%20203711.png?raw=true)
 # Description
 This project creates a user-friendly job board connecting job seekers and employers. Features include easy registration, advanced job search with filters, seamless job posting and application management, integrated messaging system, and analytics for tracking application progress. Prioritize security, scalability, and user experience to ensure a reliable and efficient platform for both job seekers and employers.
 # Features
