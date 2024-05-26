@@ -1,79 +1,147 @@
 package com.job.service;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import com.job.models.Job;
+import com.job.models.*;
 
 public class JobService {
     private static final String JDBC_URL = "jdbc:mysql://localhost:3306/job_portal";
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "Varsh@12";
+    private static final String JDBC_USER = "root";
+    private static final String JDBC_PASSWORD = "Varsh@12";
 
-    private static final String SELECT_ALL_JOBS = "SELECT * FROM jobs";
-    private static final String SELECT_JOB_BY_ID = "SELECT * FROM jobs WHERE job_id = ?";
-    private static final String INSERT_JOB = "INSERT INTO jobs (user_id, title, description, location, salary, post_date, expiry_date, other_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-    public List<Job> getAllJobs() {
-        List<Job> jobs = new ArrayList<>();
-        try (Connection connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
-             PreparedStatement statement = connection.prepareStatement(SELECT_ALL_JOBS);
-             ResultSet resultSet = statement.executeQuery()) {
-            while (resultSet.next()) {
-                Job job = createJobFromResultSet(resultSet);
-                jobs.add(job);
-            }
-        } catch (SQLException e) {
+    static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
-        return jobs;
     }
 
-    public Job getJobById(int jobId) {
-        Job job = null;
-        try (Connection connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
-             PreparedStatement statement = connection.prepareStatement(SELECT_JOB_BY_ID)) {
-            statement.setInt(1, jobId);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    job = createJobFromResultSet(resultSet);
-                }
+    public Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASSWORD);
+    }
+    
+    public List<Jobs> getAllJobs() {
+        List<Jobs> jobsList = new ArrayList<>();
+        String query = "SELECT * FROM jobs";
+
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
+            while (resultSet.next()) {
+                Jobs job = new Jobs();
+                job.setJobId(resultSet.getInt("job_id"));
+                job.setEmployerId(resultSet.getInt("employer_id"));
+                job.setTitle(resultSet.getString("title"));
+                job.setDescription(resultSet.getString("description"));
+                job.setLocation(resultSet.getString("location"));
+                job.setSalary(resultSet.getDouble("salary"));
+                job.setContactEmail(resultSet.getString("contact_email"));
+                
+                jobsList.add(job);
             }
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        return jobsList;
+    }
+
+    public Jobs getJobById(int jobId) {
+        Jobs job = null;
+        String query = "SELECT * FROM jobs WHERE job_id = ?";
+
+        try (Connection connection = getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+
+            preparedStatement.setInt(1, jobId);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    job = new Jobs();
+                    job.setJobId(resultSet.getInt("job_id"));
+                    job.setEmployerId(resultSet.getInt("employer_id"));
+                    job.setTitle(resultSet.getString("title"));
+                    job.setDescription(resultSet.getString("description"));
+                    job.setLocation(resultSet.getString("location"));
+                    job.setSalary(resultSet.getDouble("salary"));
+                    job.setContactEmail(resultSet.getString("contact_email"));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return job;
     }
 
-    public void addJob(Job job) {
-        try (Connection connection = DriverManager.getConnection(JDBC_URL, USERNAME, PASSWORD);
-             PreparedStatement statement = connection.prepareStatement(INSERT_JOB)) {
-            statement.setInt(1, job.getUserId());
+    public boolean createJob(Jobs job) {
+        String query = "INSERT INTO jobs (employer_id, title, description, location, salary, contact_email) VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+
+            statement.setInt(1, job.getEmployerId());
             statement.setString(2, job.getTitle());
             statement.setString(3, job.getDescription());
             statement.setString(4, job.getLocation());
             statement.setDouble(5, job.getSalary());
-            statement.setTimestamp(6, job.getPostDate());
-            statement.setDate(7, job.getExpiryDate());
-            statement.setString(8, job.getOtherDetails());
+            statement.setString(6, job.getContactEmail());
 
-            statement.executeUpdate();
+            int rowsInserted = statement.executeUpdate();
+            return rowsInserted > 0;
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
+        return false;
     }
 
-    private Job createJobFromResultSet(ResultSet resultSet) throws SQLException {
-        Job job = new Job();
-        job.setJobId(resultSet.getInt("job_id"));
-        job.setUserId(resultSet.getInt("user_id"));
-        job.setTitle(resultSet.getString("title"));
-        job.setDescription(resultSet.getString("description"));
-        job.setLocation(resultSet.getString("location"));
-        job.setSalary(resultSet.getDouble("salary"));
-        job.setPostDate(resultSet.getTimestamp("post_date"));
-        job.setExpiryDate(resultSet.getDate("expiry_date"));
-        job.setOtherDetails(resultSet.getString("other_details"));
-        return job;
+    public boolean updateJob(Jobs job) {
+        String query = "UPDATE jobs SET employer_id = ?, title = ?, description = ?, location = ?, salary = ?, contact_email = ? WHERE job_id = ?";
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+
+            statement.setInt(1, job.getEmployerId());
+            statement.setString(2, job.getTitle());
+            statement.setString(3, job.getDescription());
+            statement.setString(4, job.getLocation());
+            statement.setDouble(5, job.getSalary());
+            statement.setString(6, job.getContactEmail());
+            statement.setInt(7, job.getJobId());
+
+            int rowsUpdated = statement.executeUpdate();
+            return rowsUpdated > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public boolean deleteJob(int jobId) {
+        String query = "DELETE FROM jobs WHERE job_id = ?";
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+
+            statement.setInt(1, jobId);
+            int rowsDeleted = statement.executeUpdate();
+            return rowsDeleted > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
     }
 }

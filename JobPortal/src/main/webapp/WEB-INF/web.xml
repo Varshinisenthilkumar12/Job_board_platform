@@ -14,12 +14,22 @@
         <url-pattern>/user</url-pattern>
     </servlet-mapping>
     
-	<servlet>
+    <servlet>
         <servlet-name>JobServlet</servlet-name>
         <servlet-class>com.job.api.JobServlet</servlet-class>
     </servlet>
+
     <servlet-mapping>
         <servlet-name>JobServlet</servlet-name>
-        <url-pattern>/jobs</url-pattern>
+        <url-pattern>/job</url-pattern>
+    </servlet-mapping>
+        <servlet>
+        <servlet-name>OrganizationServlet</servlet-name>
+        <servlet-class>com.job.api.OrganizationServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>OrganizationServlet</servlet-name>
+        <url-pattern>/org</url-pattern>
     </servlet-mapping>
 </web-app>

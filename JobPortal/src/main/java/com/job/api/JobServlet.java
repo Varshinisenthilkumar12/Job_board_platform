@@ -1,65 +1,144 @@
 package com.job.api;
-import java.io.*;
-import javax.servlet.*;
-import javax.servlet.http.*;
-import java.sql.Date;
-import java.sql.Timestamp;
-import java.util.List;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import com.job.models.Job;
+import com.job.models.Jobs;
 import com.job.service.JobService;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.List;
 
 public class JobServlet extends HttpServlet {
-    private JobService jobService = new JobService();
-
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        JSONArray jsonArray = new JSONArray();
-        List<Job> jobs = jobService.getAllJobs();
-        for (Job job : jobs) {
-            try {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("jobId", job.getJobId());
-                jsonObject.put("userId", job.getUserId());
-                jsonObject.put("title", job.getTitle());
-                jsonObject.put("description", job.getDescription());
-                jsonObject.put("location", job.getLocation());
-                jsonObject.put("salary", job.getSalary());
-                jsonObject.put("postDate", job.getPostDate().toString());
-                jsonObject.put("expiryDate", job.getExpiryDate().toString());
-                jsonObject.put("otherDetails", job.getOtherDetails());
-                jsonArray.put(jsonObject);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        response.setContentType("application/json");
-        response.getWriter().write(jsonArray.toString());
+    private JobService jobService;
+    public void init() throws ServletException {
+        jobService = new JobService();
     }
 
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        BufferedReader reader = request.getReader();
-        StringBuilder jsonRequest = new StringBuilder();
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String jobIdParam = req.getParameter("jobId");
+        try {
+        if (jobIdParam == null) {
+            List<Jobs> jobsList = jobService.getAllJobs();
+            JSONArray jobsJsonArray = new JSONArray();
+
+            for (Jobs job : jobsList) {
+                JSONObject jobJson = new JSONObject();
+                jobJson.put("jobId", job.getJobId());
+                jobJson.put("employerId", job.getEmployerId());
+                jobJson.put("title", job.getTitle());
+                jobJson.put("description", job.getDescription());
+                jobJson.put("location", job.getLocation());
+                jobJson.put("salary", job.getSalary());
+				jobJson.put("contactEmail", job.getContactEmail());
+                jobsJsonArray.put(jobJson);
+            }
+
+            resp.setContentType("application/json");
+            resp.getWriter().write(jobsJsonArray.toString());
+        } else {
+            int jobId = Integer.parseInt(jobIdParam);
+            Jobs job = jobService.getJobById(jobId);
+
+            if (job != null) {
+                JSONObject jobJson = new JSONObject();
+                jobJson.put("jobId", job.getJobId());
+                jobJson.put("employerId", job.getEmployerId());
+                jobJson.put("title", job.getTitle());
+                jobJson.put("description", job.getDescription());
+                jobJson.put("location", job.getLocation());
+                jobJson.put("salary", job.getSalary());
+                jobJson.put("contactEmail", job.getContactEmail());
+
+                resp.setContentType("application/json");
+                resp.getWriter().write(jobJson.toString());
+            } else {
+                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                resp.getWriter().write("{\"message\": \"Job not found\"}");
+            }
+        }} catch (JSONException e) {
+			e.printStackTrace();
+		}
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        StringBuilder sb = new StringBuilder();
+        BufferedReader reader = req.getReader();
         String line;
         while ((line = reader.readLine()) != null) {
-            jsonRequest.append(line);
+            sb.append(line);
         }
         try {
-            JSONObject jsonObject = new JSONObject(jsonRequest.toString());
-            Job job = new Job();
-            job.setUserId(jsonObject.getInt("userId"));
-            job.setTitle(jsonObject.getString("title"));
-            job.setDescription(jsonObject.getString("description"));
-            job.setLocation(jsonObject.getString("location"));
-            job.setSalary(jsonObject.getDouble("salary"));
-            job.setPostDate(Timestamp.valueOf(jsonObject.getString("postDate")));
-            job.setExpiryDate(Date.valueOf(jsonObject.getString("expiryDate")));
-            job.setOtherDetails(jsonObject.getString("otherDetails"));
-            jobService.addJob(job);
-            response.setStatus(HttpServletResponse.SC_CREATED);
-        } catch (Exception e) {
-            e.printStackTrace();
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid JSON format or error inserting job.");
+        JSONObject jobJson = new JSONObject(sb.toString());
+        Jobs job = new Jobs();
+        job.setEmployerId(jobJson.getInt("employerId"));
+        job.setTitle(jobJson.getString("title"));
+        job.setDescription(jobJson.getString("description"));
+        job.setLocation(jobJson.getString("location"));
+        job.setSalary(jobJson.getDouble("salary"));
+		job.setContactEmail(jobJson.getString("contactEmail"));
+
+        boolean isCreated = jobService.createJob(job);
+        if (isCreated) {
+            resp.setStatus(HttpServletResponse.SC_CREATED);
+            resp.getWriter().write("{\"message\": \"Job created successfully\"}");
+        } else {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write("{\"message\": \"Job creation failed\"}");
+        }} catch (JSONException e) {
+			e.printStackTrace();
+		}
+    }
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        StringBuilder sb = new StringBuilder();
+        BufferedReader reader = req.getReader();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            sb.append(line);
+        }
+        try {
+        JSONObject jobJson = new JSONObject(sb.toString());
+        Jobs job = new Jobs();
+        job.setJobId(jobJson.getInt("JobId"));
+        job.setEmployerId(jobJson.getInt("employerId"));
+        job.setTitle(jobJson.getString("title"));
+        job.setDescription(jobJson.getString("description"));
+        job.setLocation(jobJson.getString("location"));
+        job.setSalary(jobJson.getDouble("salary"));
+		job.setContactEmail(jobJson.getString("contactEmail"));
+
+        boolean isUpdated = jobService.updateJob(job);
+        if (isUpdated) {
+            resp.getWriter().write("{\"message\": \"Job updated successfully\"}");
+        } else {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write("{\"message\": \"Job update failed\"}");
+        }
+        }catch (JSONException e) {
+			e.printStackTrace();
+		}
+    }
+
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String jobIdParam = req.getParameter("jobId");
+
+        if (jobIdParam == null) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp.getWriter().write("{\"message\": \"Job ID is required\"}");
+        } else {
+            int jobId = Integer.parseInt(jobIdParam);
+            boolean isDeleted = jobService.deleteJob(jobId);
+            if (isDeleted) {
+                resp.getWriter().write("{\"message\": \"Job deleted successfully\"}");
+            } else {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                resp.getWriter().write("{\"message\": \"Job deletion failed\"}");
+            }
         }
     }
 }

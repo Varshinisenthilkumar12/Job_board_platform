@@ -1,5 +1,4 @@
 package com.job.models;
-
 public class User {
     private int userId;
     private String username;
@@ -8,13 +7,14 @@ public class User {
     private String userType;
     private String name;
     private String contactInfo;
-    public int getUserId() {
+
+    public int getId() {
         return userId;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
-    } 
+    public void setId(int id) {
+        this.userId = id;
+    }
 
     public String getUsername() {
         return username;
@@ -62,5 +62,17 @@ public class User {
 
     public void setContactInfo(String contactInfo) {
         this.contactInfo = contactInfo;
+    }
+
+    public String toString() {
+        return "User{" +
+                "id=" + userId +
+                ", username='" + username + '\'' +
+                ", password='" + password + '\'' +
+                ", email='" + email + '\'' +
+                ", userType='" + userType + '\'' +
+                ", name='" + name + '\'' +
+                ", contactInfo='" + contactInfo + '\'' +
+                '}';
     }
 }
