@@ -10,19 +10,6 @@ public class Organization {
     private String contactEmail;
     private String contactPhone;
 
-    public Organization() {}
-
-    public Organization(int organizationId, String name, String description, String location, String industry, String website, String contactEmail, String contactPhone) {
-        this.organizationId = organizationId;
-        this.name = name;
-        this.description = description;
-        this.location = location;
-        this.industry = industry;
-        this.website = website;
-        this.contactEmail = contactEmail;
-        this.contactPhone = contactPhone;
-    }
-
     public int getOrganizationId() {
         return organizationId;
     }
@@ -85,18 +72,5 @@ public class Organization {
 
     public void setContactPhone(String contactPhone) {
         this.contactPhone = contactPhone;
-    }
-
-    public String toString() {
-        return "Organization{" +
-                "organizationId=" + organizationId +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", location='" + location + '\'' +
-                ", industry='" + industry + '\'' +
-                ", website='" + website + '\'' +
-                ", contactEmail='" + contactEmail + '\'' +
-                ", contactPhone='" + contactPhone + '\'' +
-                '}';
     }
 }

@@ -1,78 +1,114 @@
 package com.job.api;
+import com.job.models.Organization;
 import com.job.models.User;
+import com.job.service.OrganizationService;
 import com.job.service.UserService;
-import org.json.JSONObject;
 import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.List;
 
+@WebServlet(name = "UserServlet", urlPatterns = {"/api/user"})
 public class UserServlet extends HttpServlet {
-    private UserService userService = new UserService();
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    	 int userId = Integer.parseInt(request.getParameter("userId"));
-         User user = userService.getUserById(userId);
+    private static final String LOGIN_JSP = "/api/login.jsp";
+    private static final String ORGANIZATIONS_JSP = "/api/organizations.jsp";
+    private static final String REGISTER_JSP = "/api/register.jsp";
 
-         if (user != null) {
-             response.setContentType("application/json");
-             
-             String json = "{ \"id\": " + user.getId() +
-                           ", \"username\": \"" + user.getUsername() + "\"" +
-                           ", \"password\": \"" + user.getPassword() + "\"" +
-                           ", \"email\": \"" + user.getEmail() + "\"" +
-                           ", \"userType\": \"" + user.getUserType() + "\"" +
-                           ", \"name\": \"" + user.getName() + "\"" +
-                           ", \"contactInfo\": \"" + user.getContactInfo() + "\" }";
+    private UserService userService;
+    private OrganizationService organizationService;
 
-             response.getWriter().write(json);
-         } else {
-             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-             response.getWriter().write("{ \"message\": \"User not found\" }");
-         }
-    } 
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    @Override
+    public void init() throws ServletException {
+        userService = new UserService();
+        organizationService = new OrganizationService();
+    }
 
-        StringBuilder jsonBuffer = new StringBuilder();
-        String line;
-        try (BufferedReader reader = request.getReader()) {
-            while ((line = reader.readLine()) != null) {
-                jsonBuffer.append(line);
-            }
-        }
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String action = req.getParameter("action");
 
-        try {
-            JSONObject json = new JSONObject(jsonBuffer.toString());
-            User u = new User();
-            u.setUsername(json.getString("username"));
-            u.setPassword(json.getString("password"));
-            u.setEmail(json.getString("email"));
-            u.setUserType(json.getString("userType"));
-            u.setName(json.getString("name"));
-            u.setContactInfo(json.getString("contactInfo"));
-
-           /* System.out.println("username: " + u.getUsername());
-            System.out.println("\npassword: " + u.getPassword());
-            System.out.println("\nemail: " + u.getEmail());
-            System.out.println("\nuserType: " + u.getUserType());
-            System.out.println("\nname: " + u.getName());
-            System.out.println("\ncontactInfoParam: " + u.getContactInfo());*/
-
-            boolean result = userService.createUser(u);
-            System.out.println(result);
-
-            if (result) {
-                response.setStatus(HttpServletResponse.SC_CREATED);
-                response.getWriter().write("{ \"message\": \"User created successfully\" }");
-            } else {
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                response.getWriter().write("{ \"message\": \"Failed to create user\" }");
-            }
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("{ \"message\": \"Invalid JSON data\" }");
+        if ("login".equals(action)) {
+            req.getRequestDispatcher(LOGIN_JSP).forward(req, resp);
+        } else if ("logout".equals(action)) {
+            logout(req, resp);
+        } else {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action");
         }
     }
 
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String action = req.getParameter("action");
+
+        if ("login".equals(action)) {
+            login(req, resp);
+        } else if ("register".equals(action)) {
+            register(req, resp);
+        } else {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action");
+        }
+    }
+
+    private void login(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+        String userType = req.getParameter("userType");
+
+        if (username == null || password == null || userType == null) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing login parameters");
+            return;
+        }
+
+        User user = userService.getUserByUsernameAndPassword(username, password);
+
+        if (user != null && userType.equals(user.getUserType())) {
+            HttpSession session = req.getSession(true);
+            session.setAttribute("loggedInUser", user);
+            session.setAttribute("userType", user.getUserType());
+
+            try {
+                List<Organization> organizations = organizationService.getAllOrganizations();
+                req.setAttribute("organizations", organizations);
+                req.getRequestDispatcher(ORGANIZATIONS_JSP).forward(req, resp);
+            } catch (Exception e) {
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error retrieving organizations");
+            }
+        } else {
+            resp.sendRedirect(req.getContextPath() + LOGIN_JSP + "?error=true");
+        }
+    }
+
+    private void logout(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        HttpSession session = req.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        resp.sendRedirect(req.getContextPath() + LOGIN_JSP);
+    }
+
+    private void register(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String username = req.getParameter("username");
+        String password = req.getParameter("password");
+        String email = req.getParameter("email");
+        String userType = req.getParameter("userType");
+        String name = req.getParameter("name");
+        String contactInfo = req.getParameter("contactInfo");
+
+        if (username == null || password == null || email == null || userType == null || name == null || contactInfo == null) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing registration parameters");
+            return;
+        }
+
+        User newUser = new User(username, password, email, userType, name, contactInfo);
+
+        if (userService.createUser(newUser)) {
+            resp.sendRedirect(req.getContextPath() + LOGIN_JSP);
+        } else {
+            resp.sendRedirect(req.getContextPath() + REGISTER_JSP + "?error=true");
+        }
+    }
 }

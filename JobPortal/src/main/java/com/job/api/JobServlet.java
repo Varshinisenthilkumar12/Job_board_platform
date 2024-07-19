@@ -1,144 +1,71 @@
 package com.job.api;
-import com.job.models.Jobs;
-import com.job.service.JobService;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.job.models.Application;
+import com.job.service.ApplicationService;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
-import java.util.List;
+import java.sql.Timestamp;
+import java.time.Instant;
 
+@WebServlet(name = "JobServlet", urlPatterns = {"/api/job"})
 public class JobServlet extends HttpServlet {
-    private JobService jobService;
+    private ApplicationService applicationService;
+
+    @Override
     public void init() throws ServletException {
-        jobService = new JobService();
-    }
-
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String jobIdParam = req.getParameter("jobId");
-        try {
-        if (jobIdParam == null) {
-            List<Jobs> jobsList = jobService.getAllJobs();
-            JSONArray jobsJsonArray = new JSONArray();
-
-            for (Jobs job : jobsList) {
-                JSONObject jobJson = new JSONObject();
-                jobJson.put("jobId", job.getJobId());
-                jobJson.put("employerId", job.getEmployerId());
-                jobJson.put("title", job.getTitle());
-                jobJson.put("description", job.getDescription());
-                jobJson.put("location", job.getLocation());
-                jobJson.put("salary", job.getSalary());
-				jobJson.put("contactEmail", job.getContactEmail());
-                jobsJsonArray.put(jobJson);
-            }
-
-            resp.setContentType("application/json");
-            resp.getWriter().write(jobsJsonArray.toString());
-        } else {
-            int jobId = Integer.parseInt(jobIdParam);
-            Jobs job = jobService.getJobById(jobId);
-
-            if (job != null) {
-                JSONObject jobJson = new JSONObject();
-                jobJson.put("jobId", job.getJobId());
-                jobJson.put("employerId", job.getEmployerId());
-                jobJson.put("title", job.getTitle());
-                jobJson.put("description", job.getDescription());
-                jobJson.put("location", job.getLocation());
-                jobJson.put("salary", job.getSalary());
-                jobJson.put("contactEmail", job.getContactEmail());
-
-                resp.setContentType("application/json");
-                resp.getWriter().write(jobJson.toString());
-            } else {
-                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                resp.getWriter().write("{\"message\": \"Job not found\"}");
-            }
-        }} catch (JSONException e) {
-			e.printStackTrace();
-		}
+        applicationService = new ApplicationService();
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader reader = req.getReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        try {
-        JSONObject jobJson = new JSONObject(sb.toString());
-        Jobs job = new Jobs();
-        job.setEmployerId(jobJson.getInt("employerId"));
-        job.setTitle(jobJson.getString("title"));
-        job.setDescription(jobJson.getString("description"));
-        job.setLocation(jobJson.getString("location"));
-        job.setSalary(jobJson.getDouble("salary"));
-		job.setContactEmail(jobJson.getString("contactEmail"));
+        String action = req.getParameter("action");
 
-        boolean isCreated = jobService.createJob(job);
-        if (isCreated) {
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-            resp.getWriter().write("{\"message\": \"Job created successfully\"}");
+        if ("apply".equals(action)) {
+            applyForJob(req, resp);
         } else {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"message\": \"Job creation failed\"}");
-        }} catch (JSONException e) {
-			e.printStackTrace();
-		}
-    }
-    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader reader = req.getReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action");
         }
-        try {
-        JSONObject jobJson = new JSONObject(sb.toString());
-        Jobs job = new Jobs();
-        job.setJobId(jobJson.getInt("JobId"));
-        job.setEmployerId(jobJson.getInt("employerId"));
-        job.setTitle(jobJson.getString("title"));
-        job.setDescription(jobJson.getString("description"));
-        job.setLocation(jobJson.getString("location"));
-        job.setSalary(jobJson.getDouble("salary"));
-		job.setContactEmail(jobJson.getString("contactEmail"));
-
-        boolean isUpdated = jobService.updateJob(job);
-        if (isUpdated) {
-            resp.getWriter().write("{\"message\": \"Job updated successfully\"}");
-        } else {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"message\": \"Job update failed\"}");
-        }
-        }catch (JSONException e) {
-			e.printStackTrace();
-		}
     }
 
-    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String jobIdParam = req.getParameter("jobId");
+    private void applyForJob(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        HttpSession session = req.getSession(false);
+        if (session == null) {
+            resp.sendRedirect(req.getContextPath() + "/api/login.jsp");
+            return;
+        }
 
-        if (jobIdParam == null) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"message\": \"Job ID is required\"}");
+        String userIdStr = req.getParameter("userId");
+        String organizationIdStr = req.getParameter("organizationId");
+        String coverLetter = req.getParameter("coverLetter");
+
+        if (userIdStr == null || userIdStr.isEmpty() || organizationIdStr == null || organizationIdStr.isEmpty()) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing or invalid userId or organizationId");
+            return;
+        }
+
+        int userId;
+        int organizationId;
+
+        try {
+            userId = Integer.parseInt(userIdStr);
+            organizationId = Integer.parseInt(organizationIdStr);
+        } catch (NumberFormatException e) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid userId or organizationId format");
+            return;
+        }
+
+        Timestamp applicationDate = Timestamp.from(Instant.now());
+        Application application = new Application(userId, organizationId, coverLetter, applicationDate);
+
+        if (applicationService.createApplication(application)) {
+            req.setAttribute("successMessage", "Application submitted successfully!");
+            req.getRequestDispatcher("/success.jsp").forward(req, resp);
         } else {
-            int jobId = Integer.parseInt(jobIdParam);
-            boolean isDeleted = jobService.deleteJob(jobId);
-            if (isDeleted) {
-                resp.getWriter().write("{\"message\": \"Job deleted successfully\"}");
-            } else {
-                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                resp.getWriter().write("{\"message\": \"Job deletion failed\"}");
-            }
+            resp.sendRedirect(req.getContextPath() + "/api/applyjob.jsp?error=true");
         }
     }
 }

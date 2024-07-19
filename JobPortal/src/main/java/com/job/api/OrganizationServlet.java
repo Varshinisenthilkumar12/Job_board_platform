@@ -1,160 +1,110 @@
 package com.job.api;
+import com.job.models.User;
 import com.job.models.Organization;
 import com.job.service.OrganizationService;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 
+@WebServlet(name = "OrganizationServlet", urlPatterns = {"/api/org"})
 public class OrganizationServlet extends HttpServlet {
     private OrganizationService organizationService;
+
+    @Override
     public void init() throws ServletException {
-        organizationService = new OrganizationService();
+        try {
+            organizationService = new OrganizationService();
+        } catch (Exception e) {
+            throw new ServletException("Failed to initialize OrganizationService", e);
+        }
     }
+
+    @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String organizationIdParam = req.getParameter("organizationId");
         try {
-        if (organizationIdParam == null) {
-            List<Organization> organizations = organizationService.getAllOrganizations();
-            JSONArray organizationsJsonArray = new JSONArray();
+            HttpSession session = req.getSession(false);
+            if (session != null) {
+                User loggedInUser = (User) session.getAttribute("loggedInUser");
 
-            for (Organization organization : organizations) {
-                JSONObject organizationJson = new JSONObject();
-                organizationJson.put("organizationId", organization.getOrganizationId());
-                organizationJson.put("name", organization.getName());
-                organizationJson.put("description", organization.getDescription());
-                organizationJson.put("location", organization.getLocation());
-                organizationJson.put("industry", organization.getIndustry());
-                organizationJson.put("website", organization.getWebsite());
-                organizationJson.put("contactEmail", organization.getContactEmail());
-				organizationJson.put("contactPhone", organization.getContactPhone());
-				
-                organizationsJsonArray.put(organizationJson);
-            }
+                if (loggedInUser != null) {
+                    String userType = loggedInUser.getUserType();
 
-            resp.setContentType("application/json");
-            resp.getWriter().write(organizationsJsonArray.toString());
-        } else {
-            try {
-                int organizationId = Integer.parseInt(organizationIdParam);
-                Organization organization = organizationService.getOrganizationById(organizationId);
+                    List<Organization> organizations = organizationService.getAllOrganizations();
+                    req.setAttribute("organizations", organizations);
 
-                if (organization != null) {
-                    JSONObject organizationJson = new JSONObject();
-                    organizationJson.put("organizationId", organization.getOrganizationId());
-                    organizationJson.put("name", organization.getName());
-                    organizationJson.put("description", organization.getDescription());
-                    organizationJson.put("location", organization.getLocation());
-                    organizationJson.put("industry", organization.getIndustry());
-                    organizationJson.put("website", organization.getWebsite());
-                    organizationJson.put("contactEmail", organization.getContactEmail());
-                    organizationJson.put("contactPhone", organization.getContactPhone());
-
-                    resp.setContentType("application/json");
-                    resp.getWriter().write(organizationJson.toString());
+                    if ("employer".equals(userType)) {
+                        req.getRequestDispatcher("/api/organizations.jsp").forward(req, resp);
+                    } else if ("jobseeker".equals(userType)) {
+                        resp.sendRedirect(req.getContextPath() + "/api/applyjob.jsp");
+                    } else {
+                        resp.sendRedirect(req.getContextPath() + "/api/login.jsp");
+                    }
                 } else {
-                    resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                    resp.getWriter().write("{\"message\": \"Organization not found\"}");
+                    resp.sendRedirect(req.getContextPath() + "/api/login.jsp");
                 }
-            } catch (NumberFormatException e) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                resp.getWriter().write("{\"message\": \"Invalid organization ID format\"}");
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/api/login.jsp");
             }
+        } catch (Exception e) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error fetching organizations: " + e.getMessage());
         }
-        } catch (JSONException e) {
-			e.printStackTrace();
-		}
     }
 
+    @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader reader = req.getReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
-        try {
-        JSONObject organizationJson = new JSONObject(sb.toString());
-        Organization organization = new Organization();
-        organization.setName(organizationJson.getString("name"));
-        organization.setDescription(organizationJson.getString("description"));
-        organization.setLocation(organizationJson.getString("location"));
-        organization.setIndustry(organizationJson.getString("industry"));
-        organization.setWebsite(organizationJson.getString("website"));
-        organization.setContactEmail(organizationJson.getString("contactEmail"));
-        organization.setContactPhone(organizationJson.getString("contactPhone"));
-
-        boolean isCreated = organizationService.createOrganization(organization);
-        if (isCreated) {
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-            resp.getWriter().write("{\"message\": \"Organization created successfully\"}");
+        String action = req.getParameter("action");
+        if ("create".equals(action)) {
+            createOrganization(req, resp);
         } else {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"message\": \"Organization creation failed\"}");
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unsupported action requested");
         }
-        } catch (JSONException e) {
-			e.printStackTrace();
-		}
     }
-    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader reader = req.getReader();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line);
-        }
+
+    private void createOrganization(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
-        JSONObject organizationJson = new JSONObject(sb.toString());
-        Organization organization = new Organization();
-        organization.setOrganizationId(organizationJson.getInt("organizationId"));
-        organization.setName(organizationJson.getString("name"));
-        organization.setDescription(organizationJson.getString("description"));
-        organization.setLocation(organizationJson.getString("location"));
-        organization.setIndustry(organizationJson.getString("industry"));
-        organization.setWebsite(organizationJson.getString("website"));
-        organization.setContactEmail(organizationJson.getString("contactEmail"));
-        organization.setContactPhone(organizationJson.getString("contactPhone"));
-
-        boolean isUpdated = organizationService.updateOrganization(organization);
-        if (isUpdated) {
-            resp.setStatus(HttpServletResponse.SC_OK);
-            resp.getWriter().write("{\"message\": \"Organization updated successfully\"}");
-        } else {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"message\": \"Organization update failed\"}");
-        }
-        } catch (JSONException e) {
-			e.printStackTrace();
-		}
-    }
-    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String organizationIdParam = req.getParameter("organizationId");
-
-        if (organizationIdParam == null) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"message\": \"Organization ID is required\"}");
-        } else {
-            try {
-                int organizationId = Integer.parseInt(organizationIdParam);
-                boolean isDeleted = organizationService.deleteOrganization(organizationId);
-                if (isDeleted) {
-                    resp.setStatus(HttpServletResponse.SC_OK);
-                    resp.getWriter().write("{\"message\": \"Organization deleted successfully\"}");
-                } else {
-                    resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                    resp.getWriter().write("{\"message\": \"Organization deletion failed\"}");
+            HttpSession session = req.getSession(false);
+            if (session != null && session.getAttribute("loggedInUser") != null) {
+                User loggedInUser = (User) session.getAttribute("loggedInUser");
+                if (!"employer".equals(loggedInUser.getUserType())) {
+                    resp.sendRedirect(req.getContextPath() + "/api/login.jsp");
+                    return;
                 }
-            } catch (NumberFormatException e) {
-                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                resp.getWriter().write("{\"message\": \"Invalid organization ID format\"}");
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/api/login.jsp");
+                return;
             }
+
+            String name = req.getParameter("name");
+            String description = req.getParameter("description");
+            String location = req.getParameter("location");
+            String industry = req.getParameter("industry");
+            String website = req.getParameter("website");
+            String contactEmail = req.getParameter("contactEmail");
+            String contactPhone = req.getParameter("contactPhone");
+
+            Organization organization = new Organization();
+            organization.setName(name);
+            organization.setDescription(description);
+            organization.setLocation(location);
+            organization.setIndustry(industry);
+            organization.setWebsite(website);
+            organization.setContactEmail(contactEmail);
+            organization.setContactPhone(contactPhone);
+
+            boolean success = organizationService.createOrganization(organization);
+            if (success) {
+                resp.sendRedirect(req.getContextPath() + "/api/org");
+            } else {
+                req.setAttribute("error", "Failed to create organization");
+                req.getRequestDispatcher("/createOrganization.jsp").forward(req, resp);
+            }
+        } catch (Exception e) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error creating organization: " + e.getMessage());
         }
     }
 }

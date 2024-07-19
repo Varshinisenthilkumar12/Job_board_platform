@@ -11,7 +11,7 @@
 
     <servlet-mapping>
         <servlet-name>UserServlet</servlet-name>
-        <url-pattern>/user</url-pattern>
+        <url-pattern>/api/user</url-pattern>
     </servlet-mapping>
     
     <servlet>
@@ -21,15 +21,15 @@
 
     <servlet-mapping>
         <servlet-name>JobServlet</servlet-name>
-        <url-pattern>/job</url-pattern>
+        <url-pattern>/api/job</url-pattern>
     </servlet-mapping>
-        <servlet>
-        <servlet-name>OrganizationServlet</servlet-name>
-        <servlet-class>com.job.api.OrganizationServlet</servlet-class>
-    </servlet>
 
-    <servlet-mapping>
-        <servlet-name>OrganizationServlet</servlet-name>
-        <url-pattern>/org</url-pattern>
-    </servlet-mapping>
+    <servlet>
+    	<servlet-name>OrganizationServlet</servlet-name>
+    	<servlet-class>com.job.api.OrganizationServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+    	<servlet-name>OrganizationServlet</servlet-name>
+    	<url-pattern>/api/org</url-pattern>
+	</servlet-mapping>
 </web-app>
