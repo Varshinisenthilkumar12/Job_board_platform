@@ -10,18 +10,6 @@ Search and Filters: Job seekers can search for jobs using keywords and filters l
 
 User Accounts: Both job seekers and companies can create accounts to manage their profiles and activities.
 
-Resume Upload: Job seekers can upload their resumes for companies to view.
-
 Apply for Jobs: Job seekers can apply directly to jobs through the platform.
 
-Messaging: Job seekers and companies can communicate through the platform.
-
-Job Alerts: Job seekers can set up alerts to get notified when new jobs matching their criteria are posted.
-
-Analytics: Companies can track the performance of their job postings.
-
-Mobile Compatibility: The platform works well on mobile devices too.
-
 Privacy and Security: Measures are in place to protect users information.
-
-
